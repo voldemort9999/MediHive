@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { authService } from '../services/api';
 import { DEMO_ACCOUNTS } from '../utils/mockData';
 
 export default function LoginPage() {
@@ -29,45 +30,43 @@ export default function LoginPage() {
     }
 
     setLoading(true);
-    await new Promise((r) => setTimeout(r, 500));
 
-    // 🔥 Get users from localStorage
-    const users = JSON.parse(localStorage.getItem("users")) || [];
-
-    // 🔍 Check registered users first
-    let account = users.find(
-      (u) =>
-        u.username === username.trim() &&
-        u.password === password
-    );
-
-    // 🔁 fallback to demo accounts (optional)
-    if (!account) {
-      account = DEMO_ACCOUNTS.find(
-        (a) =>
-          a.username === username.trim() &&
-          a.password === password
-      );
-    }
-
-    if (account) {
-      const fakeToken = btoa(
-        JSON.stringify({ id: account.id, role: account.role })
-      );
+    try {
+      // Try real API first
+      const res = await authService.login({ username: username.trim(), password });
+      const { token, user: apiUser } = res.data;
 
       login(
         {
-          id: account.id || Date.now(),
-          name: account.username || account.name,
-          role: account.role,
-          username: account.username,
+          id: apiUser.id,
+          username: apiUser.username,
+          name: apiUser.username,
+          role: apiUser.role,
         },
-        fakeToken
+        token
+      );
+      navigate(from, { replace: true });
+    } catch (apiErr) {
+      // Fallback to demo accounts (works on GitHub Pages without backend)
+      const account = DEMO_ACCOUNTS.find(
+        (a) => a.username === username.trim() && a.password === password
       );
 
-      navigate(from, { replace: true });
-    } else {
-      setError('Invalid username or password.');
+      if (account) {
+        const fakeToken = btoa(JSON.stringify({ id: account.id, role: account.role }));
+        login(
+          {
+            id: account.id,
+            username: account.username,
+            name: account.name || account.username,
+            role: account.role,
+          },
+          fakeToken
+        );
+        navigate(from, { replace: true });
+      } else {
+        setError('Invalid username or password.');
+      }
     }
 
     setLoading(false);
@@ -87,9 +86,7 @@ export default function LoginPage() {
 
           {/* Logo */}
           <div className="text-center mb-8">
-            <h1 className="font-serif font-bold text-primary text-2xl">
-              MediHive
-            </h1>
+            <h1 className="font-serif font-bold text-primary text-2xl">MediHive</h1>
             <p className="text-[10px] text-gray-400 uppercase tracking-widest mt-1">
               Medical Records Management System
             </p>
@@ -101,7 +98,6 @@ export default function LoginPage() {
             </h2>
 
             <form onSubmit={handleSubmit} className="space-y-5 mt-4">
-
               <input
                 type="text"
                 placeholder="Username"
@@ -110,46 +106,38 @@ export default function LoginPage() {
                 onChange={(e) => setUsername(e.target.value)}
               />
 
-              <input
-                type={showPw ? 'text' : 'password'}
-                placeholder="Password"
-                className="form-input"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-              />
+              <div>
+                <input
+                  type={showPw ? 'text' : 'password'}
+                  placeholder="Password"
+                  className="form-input"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPw(!showPw)}
+                  className="text-xs text-gray-500 mt-1"
+                >
+                  {showPw ? 'Hide Password' : 'Show Password'}
+                </button>
+              </div>
 
-              <button
-                type="button"
-                onClick={() => setShowPw(!showPw)}
-                className="text-xs text-gray-500"
-              >
-                {showPw ? 'Hide Password' : 'Show Password'}
-              </button>
+              {error && <p className="text-red-500 text-xs">{error}</p>}
 
-              {error && (
-                <p className="text-red-500 text-xs">{error}</p>
-              )}
-
-              <button
-                type="submit"
-                disabled={loading}
-                className="btn-primary w-full"
-              >
+              <button type="submit" disabled={loading} className="btn-primary w-full">
                 {loading ? 'Logging in...' : 'Login'}
               </button>
             </form>
 
             {/* Demo accounts */}
-            <div className="mt-6">
+            <div className="mt-6 border-t border-bdr pt-4">
+              <p className="text-[10px] text-gray-400 uppercase tracking-wider mb-2">Demo Accounts</p>
               {DEMO_ACCOUNTS.map((a) => (
                 <button
                   key={a.username}
-                  onClick={() => {
-                    setUsername(a.username);
-                    setPassword(a.password);
-                    setError('');
-                  }}
-                  className="block text-xs text-blue-500"
+                  onClick={() => { setUsername(a.username); setPassword(a.password); setError(''); }}
+                  className="block text-xs text-secondary hover:text-primary py-0.5 transition-colors"
                 >
                   {a.role}: {a.username} / {a.password}
                 </button>
@@ -157,33 +145,20 @@ export default function LoginPage() {
             </div>
           </div>
 
-          {/* Signup */}
           <div className="text-center mt-5">
             <p className="text-xs">
-              Don’t have an account?{' '}
-              <span
-                className="text-blue-500 cursor-pointer"
-                onClick={() => navigate('/register')}
-              >
+              Don&apos;t have an account?{' '}
+              <span className="text-blue-500 cursor-pointer" onClick={() => navigate('/register')}>
                 Sign Up
               </span>
             </p>
-
-            <Link
-              to="/"
-              className="text-xs text-secondary hover:text-primary"
-            >
-              ← Back to home
-            </Link>
+            <Link to="/" className="text-xs text-secondary hover:text-primary">← Back to home</Link>
           </div>
         </div>
       </div>
 
-      {/* Footer */}
       <div className="bg-primary py-3 text-center">
-        <p className="text-[10px] text-white/25">
-          © 2026 MediHive
-        </p>
+        <p className="text-[10px] text-white/25">© 2026 MediHive</p>
       </div>
     </div>
   );
