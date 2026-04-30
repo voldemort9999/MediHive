@@ -1,0 +1,9 @@
+.git
+.DS_Store
+node_modules
+build
+medihive-backend/media
+medihive-backend/.venv
+medihive-backend/venv
+**/__pycache__
+**/*.pyc

@@ -17,12 +17,13 @@ export default function RecordsPage() {
       .then((res) => setRecords(res.data))
       .catch(() => {
         // Fallback to mock data when backend not reachable
+        const localRecords = JSON.parse(localStorage.getItem('records') || '[]');
         const filtered = user?.role === 'doctor'
           ? MOCK_RECORDS.filter((r) => r.doctor === user?.name)
           : user?.role === 'patient'
           ? MOCK_RECORDS.filter((r) => r.patientName === user?.name)
           : MOCK_RECORDS;
-        setRecords(filtered.map((r) => ({
+        setRecords([...filtered.map((r) => ({
           id: r.id,
           patient_display: r.patientName,
           diagnosis: r.diagnosis,
@@ -30,7 +31,7 @@ export default function RecordsPage() {
           record_type: r.type,
           created_at: r.date,
           status: r.status,
-        })));
+        })), ...localRecords]);
       });
   }, [user]);
 

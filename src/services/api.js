@@ -1,7 +1,10 @@
 import axios from 'axios';
 
+const API_BASE_URL = process.env.REACT_APP_API_BASE_URL
+  || (process.env.NODE_ENV === 'development' ? 'http://localhost:8000/api' : '/api');
+
 const api = axios.create({
-  baseURL: 'http://localhost:8000/api',
+  baseURL: API_BASE_URL,
   headers: { 'Content-Type': 'application/json' },
   timeout: 15000,
 });
@@ -19,7 +22,7 @@ api.interceptors.response.use(
       localStorage.removeItem('medihive_token');
       localStorage.removeItem('medihive_user');
       localStorage.removeItem('user');
-      window.location.href = '/login';
+      window.location.assign('/#/login');
     }
     return Promise.reject(err);
   }

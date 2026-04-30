@@ -10,7 +10,7 @@ SECRET_KEY = os.getenv(
     "django-insecure-m*34@3u)k(*8i*qpbjzkm46u23e3f&1bzjug54f$c(76ef20x-",
 )
 
-DEBUG = os.getenv("DEBUG", "True").lower() == "true"
+DEBUG = os.getenv("DEBUG", "False" if os.getenv("VERCEL") else "True").lower() == "true"
 
 
 def env_list(name, default=""):
@@ -33,6 +33,12 @@ def get_database_config():
             "OPTIONS": {"sslmode": os.getenv("DB_SSLMODE", "require")},
         }
 
+    if os.getenv("VERCEL"):
+        return {
+            "ENGINE": "django.db.backends.sqlite3",
+            "NAME": os.getenv("SQLITE_PATH", "/tmp/medihive.sqlite3"),
+        }
+
     return {
         "ENGINE": os.getenv("DB_ENGINE", "django.db.backends.postgresql"),
         "NAME": os.getenv("DB_NAME", "medihive_db"),
@@ -44,6 +50,9 @@ def get_database_config():
 
 
 ALLOWED_HOSTS = env_list("ALLOWED_HOSTS", "127.0.0.1,localhost,.vercel.app")
+vercel_url = os.getenv("VERCEL_URL")
+if vercel_url and vercel_url not in ALLOWED_HOSTS:
+    ALLOWED_HOSTS.append(vercel_url)
 
 INSTALLED_APPS = [
     "django.contrib.admin",
@@ -109,7 +118,7 @@ USE_TZ = True
 STATIC_URL = "static/"
 
 MEDIA_URL = "/media/"
-MEDIA_ROOT = BASE_DIR / "media"
+MEDIA_ROOT = Path(os.getenv("MEDIA_ROOT", "/tmp/medihive-media" if os.getenv("VERCEL") else BASE_DIR / "media"))
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
@@ -127,12 +136,19 @@ SIMPLE_JWT = {
     "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
 }
 
-CORS_ALLOW_ALL_ORIGINS = True
+CORS_ALLOW_ALL_ORIGINS = os.getenv(
+    "CORS_ALLOW_ALL_ORIGINS",
+    "False" if os.getenv("VERCEL") else "True",
+).lower() == "true"
 cors_allowed_origins = env_list("CORS_ALLOWED_ORIGINS")
 if cors_allowed_origins:
     CORS_ALLOW_ALL_ORIGINS = False
     CORS_ALLOWED_ORIGINS = cors_allowed_origins
 
 CSRF_TRUSTED_ORIGINS = env_list("CSRF_TRUSTED_ORIGINS")
+if vercel_url:
+    vercel_origin = f"https://{vercel_url}"
+    if vercel_origin not in CSRF_TRUSTED_ORIGINS:
+        CSRF_TRUSTED_ORIGINS.append(vercel_origin)
 
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
