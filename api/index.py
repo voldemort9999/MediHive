@@ -24,14 +24,21 @@ def prepare_ephemeral_database():
     from records.models import User
 
     demo_users = [
-        ("admin", "admin123", "admin"),
-        ("doctor", "doctor123", "doctor"),
-        ("patient", "patient123", "patient"),
+        ("admin", "admin123", "admin", "System", "Administrator", "Administration"),
+        ("doctor", "doctor123", "doctor", "Priya", "Sharma", "Cardiology"),
+        ("patient", "patient123", "patient", "Rohan", "Mehta", ""),
     ]
-    for username, password, role in demo_users:
+    for username, password, role, first_name, last_name, department in demo_users:
         user, created = User.objects.get_or_create(
             username=username,
-            defaults={"role": role, "is_staff": role == "admin", "is_superuser": role == "admin"},
+            defaults={
+                "role": role,
+                "first_name": first_name,
+                "last_name": last_name,
+                "department": department,
+                "is_staff": role == "admin",
+                "is_superuser": role == "admin",
+            },
         )
         if created:
             user.set_password(password)

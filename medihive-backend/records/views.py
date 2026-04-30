@@ -3,7 +3,7 @@ from rest_framework.response import Response
 from rest_framework import status, viewsets, permissions
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from .models import Record, FamilyLink
+from .models import User, Record, FamilyLink
 from .serializers import (
     RegisterSerializer,
     LoginSerializer,
@@ -11,6 +11,11 @@ from .serializers import (
     UserSerializer,
     FamilyLinkSerializer,
 )
+
+
+class IsAdminUserRole(permissions.BasePermission):
+    def has_permission(self, request, view):
+        return bool(request.user and request.user.is_authenticated and request.user.role == "admin")
 
 
 class RegisterView(APIView):
@@ -50,6 +55,21 @@ class MeView(APIView):
     def get(self, request):
         serializer = UserSerializer(request.user)
         return Response(serializer.data)
+
+
+class UserViewSet(viewsets.ModelViewSet):
+    serializer_class = UserSerializer
+    permission_classes = [IsAdminUserRole]
+    queryset = User.objects.all().order_by("id")
+
+    def destroy(self, request, *args, **kwargs):
+        user = self.get_object()
+        if user.id == request.user.id:
+            return Response(
+                {"detail": "You cannot delete your own admin account."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        return super().destroy(request, *args, **kwargs)
 
 
 class RecordViewSet(viewsets.ModelViewSet):

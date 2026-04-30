@@ -25,9 +25,59 @@ class LoginSerializer(serializers.Serializer):
 
 
 class UserSerializer(serializers.ModelSerializer):
+    name = serializers.SerializerMethodField()
+    joined = serializers.DateTimeField(source="date_joined", read_only=True)
+    status = serializers.CharField(required=False)
+    password = serializers.CharField(write_only=True, required=False, allow_blank=True)
+
     class Meta:
         model = User
-        fields = ["id", "username", "email", "role", "first_name", "last_name"]
+        fields = [
+            "id",
+            "username",
+            "email",
+            "role",
+            "first_name",
+            "last_name",
+            "name",
+            "department",
+            "status",
+            "joined",
+            "password",
+        ]
+        read_only_fields = ["id", "name", "joined"]
+
+    def get_name(self, obj):
+        full_name = obj.get_full_name().strip()
+        return full_name or obj.username
+
+    def _apply_password_and_status(self, user, password=None, status=None):
+        if password:
+            user.set_password(password)
+        if status:
+            user.is_active = status.lower() == "active"
+        user.is_staff = user.role == "admin"
+        user.is_superuser = user.role == "admin"
+        return user
+
+    def create(self, validated_data):
+        password = validated_data.pop("password", None)
+        status = validated_data.pop("status", None)
+        user = User(**validated_data)
+        self._apply_password_and_status(user, password, status)
+        if not password:
+            user.set_unusable_password()
+        user.save()
+        return user
+
+    def update(self, instance, validated_data):
+        password = validated_data.pop("password", None)
+        status = validated_data.pop("status", None)
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        self._apply_password_and_status(instance, password, status)
+        instance.save()
+        return instance
 
 
 class RecordSerializer(serializers.ModelSerializer):

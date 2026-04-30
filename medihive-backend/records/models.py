@@ -10,6 +10,11 @@ class User(AbstractUser):
         ("family", "Family"),
     ]
     role = models.CharField(max_length=10, choices=ROLE_CHOICES, default="patient")
+    department = models.CharField(max_length=100, blank=True)
+
+    @property
+    def status(self):
+        return "Active" if self.is_active else "Inactive"
 
     def __str__(self):
         return self.username
