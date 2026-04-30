@@ -1,6 +1,7 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status, viewsets, permissions
+from rest_framework.decorators import action
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from .models import User, Record, FamilyLink
@@ -70,6 +71,33 @@ class UserViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )
         return super().destroy(request, *args, **kwargs)
+
+
+class PatientViewSet(viewsets.ReadOnlyModelViewSet):
+    serializer_class = UserSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        user = self.request.user
+        patients = User.objects.filter(role="patient", is_active=True).order_by("id")
+        if user.role == "admin":
+            return patients
+        if user.role == "doctor":
+            patient_ids = Record.objects.filter(doctor=user).values_list("patient", flat=True)
+            return patients.filter(id__in=patient_ids)
+        if user.role == "patient":
+            return patients.filter(id=user.id)
+        if user.role == "family":
+            patient_ids = FamilyLink.objects.filter(
+                family_member=user
+            ).values_list("patient", flat=True)
+            return patients.filter(id__in=patient_ids)
+        return User.objects.none()
+
+    @action(detail=False, methods=["get"], url_path="assigned")
+    def assigned(self, request):
+        serializer = self.get_serializer(self.get_queryset(), many=True)
+        return Response(serializer.data)
 
 
 class RecordViewSet(viewsets.ModelViewSet):

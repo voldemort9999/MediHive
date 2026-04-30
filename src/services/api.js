@@ -52,6 +52,7 @@ export const recordService = {
 };
 
 export const patientService = {
+  getAll:      ()   => api.get('/patients/'),
   getAssigned: () => api.get('/patients/assigned/'),
   getById: (id)   => api.get(`/patients/${id}/`),
 };
