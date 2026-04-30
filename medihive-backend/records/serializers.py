@@ -32,6 +32,8 @@ class UserSerializer(serializers.ModelSerializer):
 
 class RecordSerializer(serializers.ModelSerializer):
     patient_name = serializers.CharField(write_only=True, required=False)
+    patient_display = serializers.CharField(source="patient.username", read_only=True)
+    doctor_display = serializers.CharField(source="doctor.username", read_only=True)
 
     class Meta:
         model = Record
